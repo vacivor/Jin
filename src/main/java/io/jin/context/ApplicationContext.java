@@ -262,14 +262,7 @@ public class ApplicationContext {
         if (value != null) {
             return resolveValue(value.value(), parameter.getType());
         }
-
-        Type genericType = parameter.getParameterizedType();
-        Class<?> rawType = parameter.getType();
-        if (rawType == Provider.class) {
-            Class<?> providedType = resolveProviderType(genericType);
-            return (Provider<?>) () -> getBean(providedType);
-        }
-        return resolveDependency(rawType);
+        return resolveInjectTarget(parameter.getType(), parameter.getParameterizedType());
     }
 
     private Class<?> resolveProviderType(Type genericType) {
@@ -296,7 +289,7 @@ public class ApplicationContext {
                     if (!isInjectField(field)) {
                         continue;
                     }
-                    Object value = resolveDependency(field.getType());
+                    Object value = resolveInjectTarget(field.getType(), field.getGenericType());
                     field.setAccessible(true);
                     field.set(bean, value);
                 } catch (IllegalAccessException e) {
@@ -366,6 +359,14 @@ public class ApplicationContext {
 
     private boolean isInjectField(AnnotatedElement field) {
         return field.isAnnotationPresent(Inject.class);
+    }
+
+    private Object resolveInjectTarget(Class<?> rawType, Type genericType) {
+        if (rawType == Provider.class) {
+            Class<?> providedType = resolveProviderType(genericType);
+            return (Provider<?>) () -> getBean(providedType);
+        }
+        return resolveDependency(rawType);
     }
 
     private String describeCycle(Class<?> targetType) {
